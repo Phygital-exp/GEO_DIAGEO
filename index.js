@@ -155,6 +155,30 @@ app.post("/api/enviar-ubicacion", async (req, res) => {
     }
 });
 
+// ========== DIAGNÓSTICO DE CONEXIÓN CON LA API ==========
+app.get("/api/diagnostico", async (req, res) => {
+    const probar = async (url, headers) => {
+        try {
+            const r = await fetch(url, { headers });
+            return { status: r.status, server: r.headers.get("server") };
+        } catch (err) {
+            return { error: err.message };
+        }
+    };
+
+    const base = "https://botai.smartdataautomation.com/api_backend_ai/dinamic-db/report/119";
+    const resultado = {
+        node: process.version,
+        token_configurado: Boolean(API_TOKEN),
+        usuarios_diageo: await probar(DIAGEO_USUARIOS_URL, AUTH_HEADERS),
+        usuarios_nutresa: await probar(`${base}/usuarios_nutresa`, AUTH_HEADERS),
+        sin_token: await probar(DIAGEO_USUARIOS_URL, {}),
+    };
+
+    console.log("🩺 Diagnóstico:", JSON.stringify(resultado, null, 2));
+    res.json(resultado);
+});
+
 // ========== HEALTH CHECK ==========
 app.get("/health", (req, res) => {
     res.json({ status: "OK", timestamp: new Date().toISOString() });
