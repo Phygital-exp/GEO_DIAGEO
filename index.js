@@ -4,10 +4,17 @@ const fetch = require("node-fetch");
 const app = express();
 
 const PORT = process.env.PORT || 3000;
-const API_TOKEN = process.env.API_TOKEN;
+// Acepta el token con o sin el prefijo "Token " y sin comillas/espacios sobrantes
+const API_TOKEN = (process.env.API_TOKEN || "")
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .replace(/^Token\s+/i, "")
+    .trim();
 
 if (!API_TOKEN) {
     console.warn("⚠️ API_TOKEN no está configurado. Las llamadas a la API van a fallar.");
+} else {
+    console.log(`🔑 API_TOKEN cargado (${API_TOKEN.length} caracteres, termina en ...${API_TOKEN.slice(-4)})`);
 }
 
 const AUTH_HEADERS = {
