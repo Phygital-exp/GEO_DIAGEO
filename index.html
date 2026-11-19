@@ -121,6 +121,8 @@
             border-radius: 8px;
             font-size: 0.95rem;
             font-weight: 500;
+            line-height: 1.45;
+            text-align: left;
         }
 
         .error {
@@ -199,7 +201,7 @@
             <i class="material-icons icon">verified_user</i>✅ Usuario validado correctamente
         </p>
 
-        <button class="button-location" onclick="enviarDatos()">
+        <button id="btn-ubicacion" class="button-location" onclick="enviarDatos()">
             <i class="material-icons icon">my_location</i>Compartir Ubicación
         </button>
 
@@ -274,14 +276,35 @@
     }
 
     // ========== COMPARTIR UBICACIÓN ==========
+    function mostrarErrorUbicacion(error) {
+        const mensajeUbicacion = document.getElementById('mensaje-ubicacion');
+        const mensajes = {
+            1: 'No autorizaste el acceso a la ubicación. En iPhone ve a Ajustes > Privacidad y seguridad > Localización > Safari (o el navegador que uses), selecciona “Al usar la app” y activa Ubicación precisa. Luego recarga esta página e inténtalo de nuevo.',
+            2: 'No fue posible determinar tu ubicación. Verifica que Localización y Ubicación precisa estén activadas, y que tengas conexión.',
+            3: 'La ubicación tardó demasiado. Muévete a un lugar con mejor señal y vuelve a intentarlo.'
+        };
+        const detalle = mensajes[error && error.code] || 'No se pudo obtener tu ubicación. Verifica los permisos e inténtalo de nuevo.';
+        mensajeUbicacion.innerHTML = `<p class="status error"><i class="material-icons icon">location_off</i>❌ ${detalle}</p>`;
+    }
+
+    // ========== COMPARTIR UBICACIÓN ==========
     function enviarDatos() {
         const mensajeUbicacion = document.getElementById('mensaje-ubicacion');
+        const botonUbicacion = document.getElementById('btn-ubicacion');
+
+        // Safari/iOS no permite geolocalización desde HTTP. Esta comprobación
+        // evita un error genérico y deja claro cómo abrir la página.
+        if (!window.isSecureContext) {
+            mensajeUbicacion.innerHTML = '<p class="status error"><i class="material-icons icon">lock</i>❌ Para compartir tu ubicación, abre esta página mediante <strong>HTTPS</strong> (la dirección debe comenzar por https://).</p>';
+            return;
+        }
 
         if (!navigator.geolocation) {
             mensajeUbicacion.innerHTML = '<p class="status error"><i class="material-icons icon">location_off</i>Geolocalización no está disponible en tu navegador.</p>';
             return;
         }
 
+        botonUbicacion.disabled = true;
         mensajeUbicacion.innerHTML = '<p class="status info"><span class="loading"></span>Obteniendo tu ubicación...</p>';
 
         navigator.geolocation.getCurrentPosition(
@@ -307,16 +330,25 @@
                     if (res.ok) {
                         mensajeUbicacion.innerHTML = '<p class="status success"><i class="material-icons icon">check_circle</i>✅ Ubicación enviada correctamente!</p>';
                     } else {
-                        throw new Error('Error en la respuesta del servidor');
+                        const detalle = await res.text();
+                        throw new Error(`El servidor respondió ${res.status}${detalle ? `: ${detalle}` : ''}`);
                     }
                 } catch (error) {
                     console.error("Error al enviar:", error);
                     mensajeUbicacion.innerHTML = '<p class="status error"><i class="material-icons icon">error</i>❌ Error al enviar los datos. Intenta de nuevo.</p>';
+                } finally {
+                    botonUbicacion.disabled = false;
                 }
             },
             (error) => {
                 console.error("Error de geolocalización:", error);
-                mensajeUbicacion.innerHTML = '<p class="status error"><i class="material-icons icon">location_off</i>❌ No se pudo obtener tu ubicación. Verifica los permisos.</p>';
+                mostrarErrorUbicacion(error);
+                botonUbicacion.disabled = false;
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 20000,
+                maximumAge: 0
             }
         );
     }
